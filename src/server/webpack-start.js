@@ -13,6 +13,8 @@ import requireFromString from '../webpack/utils/requireFromString';
 // Assets normalizer appending publicPath
 import normalizeAssets from '../webpack/utils/normalizeAssets';
 
+
+
 // Notify the user that compilation has started and should be done soon.
 
 // eslint-disable-next-line
@@ -268,21 +270,96 @@ try {
       host: devServerConfig.host,
     };
 
+
+    const haiku = require('./haiku');
+    
+    /**
+     * Random ID until the ID is not in use
+     */
+    function randomID(callback) {
+      const id = haiku();
+      if (id in userIds) setTimeout(() => haiku(callback), 5);
+      else callback(id);
+    }
+
+    /**
+     * Send data to friend
+     */
+    function sendTo(to, done, fail) {
+      const receiver = userIds[to];
+      if (receiver) {
+        const next = typeof done === 'function' ? done : noop;
+        next(receiver);
+      } else {
+        const next = typeof fail === 'function' ? fail : noop;
+        next();
+      }
+    }
+
+    var socket;
+    const userIds = {};
+    const noop = () => {};
+
+    /**
+     * Initialize when a connection is made
+     * @param {SocketIO.Socket} socket
+     */
+    function initSocket(socket) {
+      let id;
+      console.log('start socket');
+      socket
+      .on('init', () => {
+        console.log('socket init');
+        randomID((_id) => {
+          id = _id;
+          userIds[id] = socket;
+          socket.emit('init', { id });
+        });
+      })
+      .on('request', (data) => {
+        sendTo(data.to, to => to.emit('request', { from: id }));
+      })
+      .on('call', (data) => {
+        sendTo(
+          data.to,
+          to => to.emit('call', { ...data, from: id }),
+          () => socket.emit('failed')
+        );
+      })
+      .on('end', (data) => {
+        sendTo(data.to, to => to.emit('end'));
+      })
+      .on('disconnect', () => {
+        delete userIds[id];
+        console.log(id, 'disconnected');
+      })
+      ;
+
+      return socket;
+    }
+
     beforeStart(nodeServerConfig, PAW_GLOBAL, (err) => {
       if (err) {
         // eslint-disable-next-line
         console.error(err);
         return;
       }
+      
+      var server  = require('http').createServer(app);
+      var io      = require('socket.io');
+      socket = io.listen(server, { log: true })
+        .on('connection', initSocket);
+      console.log('after socket listen');
 
-      app.listen(nodeServerConfig.port, nodeServerConfig.host, () => {
+      console.log('before server listen');
+      server.listen(nodeServerConfig.port, nodeServerConfig.host, () => {
         serverStarted = true;
         // eslint-disable-next-line
         console.log(`
-
 ===================================================
   Listening to http://${nodeServerConfig.host}:${nodeServerConfig.port}
   Open the above url in your browser.
+  Hello world
 ===================================================
       `);
         afterStart(PAW_GLOBAL);

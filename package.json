@@ -1,5 +1,5 @@
 {
-  "name": "@pawjs/pawjs",
+  "name": "@dongnl/pawjs",
   "version": "2.2.11",
   "description": "A minimal pluggable reactjs framework to develop a progressive web application",
   "main": "scripts.js",
@@ -83,6 +83,7 @@
     "react-router-config": "^4.4.0-beta.6",
     "react-router-dom": "^4.3.1",
     "regenerator-runtime": "^0.12.1",
+    "socket.io": "^2.2.0",
     "style-loader": "^0.23.0",
     "supertest": "^3.3.0",
     "tapable": "^1.1.0",
